@@ -30,16 +30,6 @@
       下一班校车
     </h1>
 
-    <!-- 定位状态提示 -->
-    <div id="location-status" class="bg-white/60 rounded-2xl p-4 mb-4 border border-white/60 text-center">
-      <p class="text-sm text-morandiText font-medium">
-        <span id="location-text">正在获取位置信息...</span>
-      </p>
-      <div id="location-loading" class="mt-2">
-        <div class="inline-block w-4 h-4 border-2 border-morandiPrimary border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    </div>
-
     <!-- 结果展示 -->
     <div class="bg-white/80 rounded-2xl p-6 mb-4 border border-white/60 text-center">
       <p class="text-sm text-morandiMuted mb-2">
@@ -69,6 +59,7 @@
       // 如意公寓 → 道远楼东
       ruyi: {
         workday: [
+          "07:10","07:40",
           "08:00","08:15","08:30","09:00",
           "09:10","10:10","11:10","12:10",
           "13:00","13:10","13:30","14:00",
@@ -147,37 +138,12 @@
       }
     }
 
-    // 更新定位状态UI
-    function updateLocationStatus(message, isLoading = false, isError = false) {
-      const statusDiv = document.getElementById("location-status");
-      const textEl = document.getElementById("location-text");
-      const loadingEl = document.getElementById("location-loading");
-      
-      textEl.textContent = message;
-      
-      if (isLoading) {
-        loadingEl.style.display = "block";
-        statusDiv.className = "bg-white/60 rounded-2xl p-4 mb-4 border border-white/60 text-center";
-      } else if (isError) {
-        loadingEl.style.display = "none";
-        statusDiv.className = "bg-red-100 rounded-2xl p-4 mb-4 border border-red-200 text-center";
-      } else {
-        loadingEl.style.display = "none";
-        statusDiv.className = "bg-green-100 rounded-2xl p-4 mb-4 border border-green-200 text-center";
-        // 成功后3秒隐藏状态条
-        setTimeout(() => {
-          statusDiv.style.display = "none";
-        }, 3000);
-      }
-    }
+
 
     // 获取当前位置
     function getCurrentLocation() {
       return new Promise((resolve, reject) => {
-        updateLocationStatus("正在获取位置信息...", true);
-        
         if (!navigator.geolocation) {
-          updateLocationStatus("浏览器不支持地理定位", false, true);
           reject(new Error("浏览器不支持地理定位"));
           return;
         }
@@ -188,9 +154,6 @@
             const lng = position.coords.longitude;
             
             console.log("定位成功！当前位置:", lat, lng);
-            
-            // 隐藏定位状态提示
-            document.getElementById("location-status").style.display = "none";
             
             // 如意公寓和道远楼东的实际坐标
             const ruyiCoords = { lat: 22.704486, lng: 114.208642 }; 
@@ -210,14 +173,6 @@
           },
           error => {
             console.log("定位失败，错误代码:", error.code, "错误信息:", error.message);
-            
-            if (error.code === error.PERMISSION_DENIED) {
-              updateLocationStatus("定位权限被拒绝，请允许位置访问", false, true);
-              reject(new Error("定位权限被拒绝"));
-              return;
-            }
-            
-            updateLocationStatus(`定位失败，请检查GPS和网络`, false, true);
             reject(new Error(`定位失败: ${error.code}`));
           },
           { 
@@ -312,19 +267,11 @@
         }, 10 * 60 * 1000);
         
       } catch (error) {
-        updateLocationStatus("定位失败，应用无法启动", false, true);
-        
-        // 显示重试按钮
-        const statusDiv = document.getElementById("location-status");
-        statusDiv.innerHTML = `
-          <p class="text-sm text-red-600 font-medium mb-3">定位失败，无法确定站点位置</p>
-          <button onclick="location.reload()" 
-                  class="px-4 py-2 bg-morandiPrimary text-white rounded-xl font-medium hover:bg-morandiPrimaryDark transition-colors">
-            重新定位
-          </button>
-          <p class="text-xs text-gray-500 mt-2">请确保开启GPS并允许位置访问</p>
-        `;
-        statusDiv.className = "bg-red-100 rounded-2xl p-4 mb-4 border border-red-200 text-center";
+        console.log("定位失败，使用默认站点");
+        currentStation = "ruyi";
+        currentDayType = "workday";
+        calcNextBus();
+        setInterval(calcNextBus, 60 * 1000);
       }
     }
 
